@@ -5,6 +5,9 @@
 #include  <map>
 #include  <sstream>
 #include  <fstream>
+#include <cctype>
+#include <string>
+#include  <iomanip>
 
 class  BitcoinExchange
 {
@@ -14,10 +17,15 @@ class  BitcoinExchange
         double   valid_value(std::string);
         bool     valid_date(std::string);
         void     exchange_with_price(std::string ,double);
+    private:
+        BitcoinExchange(BitcoinExchange const  &);
+        BitcoinExchange &operator=(BitcoinExchange const &);
     public:
-
+        BitcoinExchange();
+        ~BitcoinExchange();
+    public:
         std::map<std::string, double> const &get_data() const ;
-        void  execute(const char *File) const;
+        void  execute(const char *File);
 
         class  Useless_file : std::exception
         {
