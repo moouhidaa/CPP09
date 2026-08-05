@@ -7,26 +7,6 @@
 #include <iostream>
 #include <cstddef>
 
-/*
-** PmergeMe : Ford-Johnson (merge-insertion) sort
-** ------------------------------------------------
-** Works on any container whose value_type is comparable and that supports
-** begin()/end() and insert() (std::vector, std::deque, std::list...).
-**
-** Everything is tracked by INDEX into one flat copy of the input (_data),
-** never by value, so duplicate values never cause ambiguity.
-**
-** Pipeline (classic Ford-Johnson):
-**   1) Pair elements 2 by 2; if the count is odd, the leftover becomes a
-**      "straggler" inserted at the very end.
-**   2) Recursively sort the chain made of the BIGGER element of each pair
-**      -> this recursive call on a smaller input is the "merge" part.
-**   3) Insert every "smaller" (pend) element back into the now-sorted
-**      chain by binary search, in the order given by the Jacobsthal
-**      sequence (1, then 3,2, then 5,4, then 11,10,...,6, ...), which is
-**      what gives Ford-Johnson its minimal-comparisons guarantee.
-**   4) Insert the straggler (if any) with one last binary search.
-*/
 
 template <typename Container>
 class PmergeMe
@@ -35,8 +15,8 @@ class PmergeMe
 		typedef typename Container::value_type value_type;
 
 	private:
-		std::vector<value_type>	_data;       // flat copy of the input, index = id
-		std::vector<size_t>		_sortedIdx;  // result: indices into _data, sorted by value
+		std::vector<value_type>		_data;       
+		std::vector<size_t>			_sortedIdx;
 		size_t						_comparisons;
 
 		struct PairIdx
@@ -51,8 +31,6 @@ class PmergeMe
 			++_comparisons;
 			return (_data[a] < _data[b]);
 		}
-
-		// Jacobsthal numbers: J(0)=0, J(1)=1, J(n) = J(n-1) + 2*J(n-2)
 		std::vector<size_t> jacobsthalUpTo(size_t limit)
 		{
 			std::vector<size_t> j;
@@ -63,8 +41,6 @@ class PmergeMe
 			return (j);
 		}
 
-		// 1-based positions inside the sorted main chain, in the order the
-		// matching pend elements (#2..#k) must be inserted
 		std::vector<size_t> jacobsthalInsertOrder(size_t k)
 		{
 			std::vector<size_t> order;
@@ -86,18 +62,17 @@ class PmergeMe
 			return (order);
 		}
 
-		// binary search insertion position of index `idx` into chain[lo..hi)
-		size_t binaryInsertPos(const std::vector<size_t> &chain, size_t lo, size_t hi, size_t idx)
+		size_t binaryInsertPos(const std::vector<size_t> &chain, size_t lower, size_t high, size_t idx)
 		{
-			while (lo < hi)
+			while (lower < high)
 			{
-				size_t mid = lo + (hi - lo) / 2;
+				size_t mid = lower + (high - lower) / 2;
 				if (less(chain[mid], idx))
-					lo = mid + 1;
+					lower = mid + 1;
 				else
-					hi = mid;
+					high = mid;
 			}
-			return (lo);
+			return (lower);
 		}
 
 		std::vector<size_t> fordJohnson(std::vector<size_t> chain)
@@ -105,8 +80,6 @@ class PmergeMe
 			size_t n = chain.size();
 			if (n <= 1)
 				return (chain);
-
-			// 1) pair up, bigger element first
 			std::vector<PairIdx> pairs;
 			bool hasStraggler = false;
 			size_t stragglerIdx = 0;
@@ -126,20 +99,15 @@ class PmergeMe
 				hasStraggler = true;
 			}
 
-			// 2) recursively sort the chain of "big" elements
 			std::vector<size_t> mainChain;
 			for (size_t p = 0; p < pairs.size(); ++p)
 				mainChain.push_back(pairs[p].big);
 			std::vector<size_t> sortedMain = fordJohnson(mainChain);
 
-			// map big index -> its small (pend) partner
 			std::vector<size_t> smallOf(_data.size());
 			for (size_t p = 0; p < pairs.size(); ++p)
 				smallOf[pairs[p].big] = pairs[p].small;
 
-			// 3) start from the sorted main chain, prepend the pend of the
-			//    smallest big element directly (it's guaranteed smaller
-			//    than the whole chain, no search needed)
 			std::vector<size_t> result = sortedMain;
 			size_t k = sortedMain.size();
 
@@ -149,13 +117,10 @@ class PmergeMe
 			std::vector<size_t> order = jacobsthalInsertOrder(k);
 			for (size_t oi = 0; oi < order.size(); ++oi)
 			{
-				size_t pos = order[oi];                // 1-based position in sortedMain
+				size_t pos = order[oi];          
 				size_t bigIdx = sortedMain[pos - 1];
 				size_t smallIdx = smallOf[bigIdx];
 
-				// bound the search by where bigIdx currently sits: its own
-				// pend can never be past it, which is what keeps the
-				// number of comparisons minimal
 				size_t bound = 0;
 				while (bound < result.size() && result[bound] != bigIdx)
 					++bound;
